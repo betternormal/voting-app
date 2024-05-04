@@ -5,11 +5,16 @@ A Decentralized voting application using blockchain
 ## Objectives
 The main goal of a decentralized voting app is to use blockchain technology to make the voting process more `transparent` and `secure`   
 This approach can achieve the following benefits:
-- Transparency: All blockchain transactions are immutable and publicly verifiable, enhancing transparency and reducing tampering risks.
-- Security: Blockchain's decentralized data storage offers higher security than centralized systems, lowering hacking and corruption risks.
-- Immutability: Blockchain records cannot be altered, ensuring the integrity of voting records.
-- Accessibility: Anyone with internet access can vote via a decentralized app, benefiting remote voters.
-- Auditability: Blockchain data can be audited anytime, minimize verification processes.
+- **Transparency**: All blockchain transactions are immutable and publicly verifiable, enhancing transparency and reducing tampering risks.
+- **Security**: Blockchain's decentralized data storage offers higher security than centralized systems, lowering hacking and corruption risks.
+- **Immutability**: Blockchain records cannot be altered, ensuring the integrity of voting records.
+- **Accessibility**: Anyone with internet access can vote via a decentralized app, benefiting remote voters.
+- **Auditability**: Blockchain data can be audited anytime, minimize verification processes.
+
+## Requirements
+- Users can vote on proposal they're interested in
+- Restricts registering proposal and voting based on status
+- Shows the voting results transparently
 
 ## How to run
 To run the app, you need to have Truffle(v5.11.5) installed on your machine. [Truffle Setup](https://www.npmjs.com/package/truffle)
@@ -31,12 +36,12 @@ truffle migrate --reset
 truffle test              
 ```
 
+## Workflow
+### 1.  The Admin registers the voter's Ethereum address on the allowlist
+- `onlyAdministrator`: This function can only be called by the administrator
+- `onlyDuringVotersRegistration`: This function can only be called during the voter registration period
+- Events are used to notify changes in the state of the blockchain
 
-## Requirements
-**1.  The Admin registers the voter's Ethereum address on the allowlist**
-<details>
-<summary>code</summary>
-    
 ```solidity
 function registerVoter(
         address _voterAddress
@@ -53,12 +58,13 @@ function registerVoter(
         emit VoterRegisteredEvent(_voterAddress);
     }
 ```
-</details>
 
 
-**2.  The Admin starts the proposal registration session**
-<details>
-    <summary>code</summary>
+
+### 2.  The Admin starts the proposal registration session
+
+- `onlyDuringVotersRegistration`: This can only be called during the voter registration period.  
+- `emit ProposalsRegistrationStartedEvent()`: Triggers an event to signal that the proposal registration has started.
 
 ```solidity
 function startProposalsRegistration()
@@ -75,12 +81,14 @@ function startProposalsRegistration()
         );
     }
 ```
-</details>
 
-**3. Voters can submit their proposals while the registration session is ongoing**
 
-<details>
-    <summary>code</summary>
+### 3. Voters can submit their proposals while the registration session is ongoing
+
+- `proposals.push(Proposal({description: proposalDescription, voteCount: 0}))`: 
+    - Stores the content of the proposal in the proposal object
+    - Sets the current vote count for the proposal to zero
+    - This object is then added to the proposals array
 
 ```solidity
 function registerProposal(
@@ -93,11 +101,11 @@ function registerProposal(
         emit ProposalRegisteredEvent(proposals.length - 1);
     }
 ```
-</details>
 
-**4. The Admin ends the proposal registration session**
-<details>
-    <summary>code</summary>
+
+### 4. The Admin ends the proposal registration session
+
+- `onlyDuringProposalsRegistration`: This can only be called during the proposal registration period.
 
 ```solidity
 function endProposalsRegistration()
@@ -114,11 +122,10 @@ function endProposalsRegistration()
         );
     }
 ```
-</details>
 
-**5. The Admin starts the voting session**
-<details>
-    <summary>code</summary>
+
+### 5. The Admin starts the voting session
+
 
 ```solidity
 function startVotingSession()
@@ -135,11 +142,13 @@ function startVotingSession()
         );
     }
 ```
-</details>
 
-**6. Voters vote for the proposal they like**
-<details>
-    <summary>code</summary>
+
+### 6. Voters vote for the proposal they like
+
+- `!voters[msg.sender].hasVoted`: Checks if the current caller has not already voted. If the caller has already voted, the transaction fails with the message "the caller has already voted."
+
+- `proposals[proposalId].voteCount += 1`: Increases the vote count for the specified proposal by one.
 
 ```solidity
 function vote(
@@ -155,11 +164,10 @@ function vote(
         emit VotedEvent(msg.sender, proposalId);
     }
 ```
-</details>
 
-**7. The Admin ends the voting session**
-<details>
-    <summary>code</summary>
+
+### 7. The Admin ends the voting session
+
 
 ```solidity
 function endVotingSession()
@@ -173,11 +181,13 @@ function endVotingSession()
         emit WorkflowStatusChangeEvent(Status.VotingStarted, workflowStatus);
     }
 ```
-</details>
 
-**8. The Admin counts the votes**
-<details>
-    <summary>code</summary>
+
+### 8. The Admin counts the votes
+
+- `for (uint i = 0; i < proposals.length; i++)`: Checks the vote count of each proposal.
+
+- `winningProposalIndex = i`: Sets the index of the new proposal with the highest vote count.
 
 ```solidity
     function countVotes() public onlyAdministrator onlyAfterVotingSession {
@@ -198,11 +208,15 @@ function endVotingSession()
         emit WorkflowStatusChangeEvent(Status.VotingEnded, workflowStatus);
     }
 ```
-</details>
 
-**9. Anyone can check the details of the elected proposal**
-<details>
-    <summary>code</summary>
+
+### 9. Anyone can check the details of the elected proposal
+
+- `onlyAfterVotesCounted`: Can only be called after the vote counting has been completed.
+
+- `return proposals[selectedProposalId].description`: Returns the description of the proposal that received the most votes.
+
+- `return proposals[selectedProposalId].voteCount`: Returns the vote count of the proposal that received the most votes.
 
 ```solidity
 function getWinningProposalId()
@@ -232,8 +246,50 @@ function getWinningProposalId()
         return proposals[selectedProposalId].voteCount;
     }
 ```
-</details>
 
+# Test cases
+### 1. endProposalRegistration - onlyAdministrator modifier  
+- This test verifies that the onlyAdministrator modifier functions correctly.
+- It checks whether an error is raised when a `non-administrator` account attempts to `end the proposal registration session`
+
+```js
+try {
+    await VotingAppInstance.endProposalsRegistration({from: nonVotingAdministrator});
+    assert.fail('Non-admin can"t end proposal');   
+} catch(e) {
+    //assert
+    assert.isTrue(votingAdministrator != nonVotingAdministrator);
+    assert.isTrue(e.message.includes("the caller of this function must be the administrator") , "Error: the caller of this function must be the administrator");
+}
+```
+
+### 2. endProposalRegistration - onlyDuringProposalsRegistration modifier  
+- This test verifies that an error occurs when the administrator account attempts to `close the proposal registration session` while it's `inactive`
+
+```js
+let administrator = accounts[0]; 
+
+try {
+    // Since the proposal registration session has not started, it is inactive.
+    await VotingAppInstance.endProposalsRegistration({from: administrator});
+    assert.fail("Expected an exception but did not get one");
+} catch(e) {
+    assert.include(e.message, "revert", "Expected revert not received");
+    assert.isTrue(e.message.includes("this function can be called only during proposals registration"), "Error message did not contain expected text");
+}
+```
+
+### 3. endProposalRegistration - successful  
+- This test verifies whether the administrator account can successfully `close the proposal registration after starting it`.
+- Ensure that the workflow `status changes correctly` when the proposal registration is successfully closed after being started.
+
+```js
+await VotingAppInstance.startProposalsRegistration({from: votingAdministrator});
+	  let workflowStatus = await VotingAppInstance.getWorkflowStatus();
+	  let expectedWorkflowStatus = 1;
+			
+	  assert.equal(workflowStatus.valueOf(), expectedWorkflowStatus, "The current workflow status does not correspond to proposal registration session started"); 			
+```
 
 ## Screenshots
 > truffle migrate
