@@ -2,6 +2,15 @@
 
 A Decentralized voting application using blockchain
 
+## Objectives
+The main goal of a decentralized voting app is to use blockchain technology to make the voting process more `transparent` and `secure`   
+This approach can achieve the following benefits:
+- Transparency: All blockchain transactions are immutable and publicly verifiable, enhancing transparency and reducing tampering risks.
+- Security: Blockchain's decentralized data storage offers higher security than centralized systems, lowering hacking and corruption risks.
+- Immutability: Blockchain records cannot be altered, ensuring the integrity of voting records.
+- Accessibility: Anyone with internet access can vote via a decentralized app, benefiting remote voters.
+- Auditability: Blockchain data can be audited anytime, minimize verification processes.
+
 ## How to run
 To run the app, you need to have Truffle(v5.11.5) installed on your machine. [Truffle Setup](https://www.npmjs.com/package/truffle)
 
